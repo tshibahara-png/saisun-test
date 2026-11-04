@@ -202,7 +202,7 @@ function ensureSearch_(ss) {
   const head = ['坪単価', '住所', '物件名', '図面名', '坪', '賃料（月額）', '採寸日', '図面'];
   sh.getRange(5, 1, 1, head.length).setValues([head]).setFontWeight('bold').setBackground('#e8eef7');
   sh.getRange('A6').setFormula(searchFormula_());
-  sh.getRange('A6:A').setNumberFormat('#,##0'); sh.getRange('E6:E').setNumberFormat('0.00'); sh.getRange('F6:F').setNumberFormat('#,##0');
+  sh.getRange('A6:A').setNumberFormat('#,##0'); sh.getRange('E6:E').setNumberFormat('0.00'); sh.getRange('F6:F').setNumberFormat('#,##0'); sh.getRange('G6:G').setNumberFormat('yyyy-mm-dd');
   sh.setFrozenRows(5);
   [110, 240, 160, 160, 70, 110, 100, 90].forEach((w, k) => sh.setColumnWidth(k + 1, w));
 }
