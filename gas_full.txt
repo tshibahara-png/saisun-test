@@ -386,6 +386,11 @@ function onEdit(e) {
     const sh = e.range.getSheet();
     if (sh.getName() === NAMES) { refreshSheet(); return; } // 名前を登録・変更したら、一覧と集計の名前もすぐ変える
     if (sh.getName() !== LIST || e.range.getLastRow() < 2) return;
+    // 住所（またはGPS）を書きかえたら、その行の都道府県・エリアをすぐ入れ直す
+    { const h0 = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String), AD = h0.indexOf('住所（入力）'), GP = h0.indexOf('測った場所（GPS）'), PF = h0.indexOf('都道府県'), AR = h0.indexOf('エリア');
+      const c0 = e.range.getColumn(), c1 = e.range.getLastColumn(), hit = k => k >= 0 && k + 1 >= c0 && k + 1 <= c1;
+      if ((PF >= 0 || AR >= 0) && (hit(AD) || hit(GP))) { const r0 = Math.max(2, e.range.getRow()), n = e.range.getLastRow() - r0 + 1;
+        if (n > 0) sh.getRange(r0, 1, n, h0.length).getValues().forEach((r, i) => { const p = (AD >= 0 && prefOf_(r[AD])) || (GP >= 0 && prefOf_(r[GP])) || ''; if (!p) return; if (PF >= 0) sh.getRange(r0 + i, PF + 1).setValue(p); if (AR >= 0) sh.getRange(r0 + i, AR + 1).setValue(areaOf_(p)); }); } }
     const ss = sh.getParent(), data = ss.getSheetByName(DATA); if (!data || data.getLastRow() < 2) return;
     const hdr = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String), idc = hdr.indexOf('ID'); if (idc < 0) return;
     const r0 = Math.max(2, e.range.getRow()), n = e.range.getLastRow() - r0 + 1;
