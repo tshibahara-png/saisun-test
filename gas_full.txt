@@ -226,8 +226,11 @@ function prefOf_(addr) {
   for (const [, ks] of AREA_JP) for (const k of ks) if (t2.indexOf(k) >= 0) return k === '京都' || k === '大阪' ? k + '府' : k + '県';
   return '';
 }
+// 主要な都府県は、地方にまとめずに単独のエリアにする
+const AREA_MAJOR = ['東京', '神奈川', '愛知', '大阪', '福岡'];
 function areaOf_(addr) {
   const t = String(addr || '').replace(/\s/g, ''); if (!t) return '';
+  { const p = prefOf_(t); const k = AREA_MAJOR.find(x => p.indexOf(x) === 0); if (k) return p; }
   for (const [a, ks] of AREA_TW) if (ks.some(k => t.indexOf(k) >= 0)) return a;
   const t2 = t.replace(/東京/g, '★'); // 「東京都」の中の「京都」に反応しないように
   if (t.indexOf('東京') >= 0) return '関東';
