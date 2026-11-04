@@ -133,6 +133,7 @@ function doPost(e) {
       const f = rows.map((_, i) => [`=IF(AND(N(${rc}${i + 2})>0,N(${tc}${i + 2})>0),ROUND(${rc}${i + 2}/${tc}${i + 2}),"")`]);
       list.getRange(2, UNIT + 1, rows.length, 1).setFormulas(f).setNumberFormat('#,##0');
       list.getRange(2, RENT + 1, rows.length, 1).setNumberFormat('#,##0');
+      list.getRange(1, 1, rows.length + 1, head.length).setHorizontalAlignment('right'); // 文字はすべて右寄せにそろえる
     }
     // 見やすく：1行1図面で折り返さない・列幅をそろえる・見出しに色・IDは隠す
     try {
@@ -207,6 +208,7 @@ function ensureSearch_(ss) {
   sh.getRange(5, 1, 1, head.length).setValues([head]).setFontWeight('bold').setBackground('#e8eef7');
   sh.getRange('A6').setFormula(searchFormula_());
   sh.getRange('A6:A').setNumberFormat('#,##0'); sh.getRange('G6:G').setNumberFormat('0.00'); sh.getRange('H6:H').setNumberFormat('#,##0'); sh.getRange('I6:I').setNumberFormat('yyyy-mm-dd');
+  sh.getRange('A5:J').setHorizontalAlignment('right');
   sh.setFrozenRows(5);
   [110, 90, 90, 240, 160, 160, 70, 110, 100, 90].forEach((w, k) => sh.setColumnWidth(k + 1, w));
 }
