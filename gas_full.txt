@@ -183,7 +183,7 @@ const SEARCH = '物件さがし';
 function makeSearchSheet() { const ss = SpreadsheetApp.getActiveSpreadsheet(); const sh = ss.getSheetByName(SEARCH); if (sh) sh.getRange('A11').setFormula(searchFormula_()); else ensureSearch_(ss); }
 function searchFormula_() {
   const url = ScriptApp.getService().getUrl();
-  return '=LET(z_h,\'図面一覧\'!A1:AZ1,z_d,\'図面一覧\'!A2:AZ,z_c,LAMBDA(n,INDEX(z_d,0,XMATCH(n,z_h))),'
+  return '=ARRAYFORMULA(LET(z_h,\'図面一覧\'!A1:AZ1,z_d,\'図面一覧\'!A2:AZ,z_c,LAMBDA(n,INDEX(z_d,0,XMATCH(n,z_h))),'
     + 'z_id,z_c("ID"),z_nm,z_c("図面名"),z_pr,z_c("物件名"),z_ad,z_c("住所（入力）"),z_fl,z_c("階"),z_tb,z_c("坪"),z_rent,z_c("賃料（月額・円）"),z_up,z_c("坪単価（円/坪）"),z_dt,z_c("採寸日"),z_who,z_c("測った人"),'
     + 'z_lim,MAP(z_ad,LAMBDA(a,IFERROR(INDEX(FILTER($E$4:$E$8,($D$4:$D$8<>"")*ISNUMBER(SEARCH($D$4:$D$8,a))),1),$E$9))),'
     + 'z_pct,N($B$7)/100,z_tl,N($B$6),'
@@ -194,7 +194,7 @@ function searchFormula_() {
     + 'z_lk,IF(z_id="","",HYPERLINK("' + url + '?open="&z_id,"図面を見る")),'
     + 'z_M,FILTER(HSTACK(z_j,z_nm,z_pr,z_ad,z_fl,z_tb,z_rent,z_up,z_lim,z_dt,z_who,z_lk),z_keep2),'
     + 'z_s,$B$3,z_k,SWITCH(z_s,"賃料が安い順",7,"面積が広い順",6,"面積が狭い順",6,"新しい順",10,8),z_o,SWITCH(z_s,"面積が広い順",FALSE,"新しい順",FALSE,TRUE),'
-    + 'IFERROR(SORT(z_M,z_k,z_o),"該当する図面はありません"))';
+    + 'IFERROR(SORT(z_M,z_k,z_o),"該当する図面はありません")))';
 }
 function ensureSearch_(ss) {
   if (ss.getSheetByName(SEARCH)) return;
