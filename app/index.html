@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>採寸平面図メーカー</title>
+<link rel="apple-touch-icon" href="../icon180.png">
+<link rel="icon" href="../icon192.png">
+<meta name="theme-color" content="#1f3a34">
+<script>
+  // ホーム画面のアイコンから開いたときは、すぐ図面メーカー（Googleのページ）へ移動する
+  var EXEC = "https://script.google.com/a/macros/uk-corp.co.jp/s/AKfycby0Zyzh7BG8gQ0LBOpXHbVtY-Te-DCNlTMcgsJCdF2rAHxH3V6jgQ9_vbq5TN5wphY/exec";
+  if (/[?&]go=1/.test(location.search)) { location.replace(EXEC); }
+  else { history.replaceState(null, "", location.pathname + "?go=1"); }
+</script>
+<style>
+  body{margin:0;background:#f6f3ec;color:#1f2a28;font-family:-apple-system,"Hiragino Sans",sans-serif;padding:max(24px,env(safe-area-inset-top)) 20px 32px;line-height:1.7}
+  img{width:96px;height:96px;border-radius:22px;display:block;margin:8px 0 16px}
+  h1{font-size:20px;margin:0 0 12px}
+  ol{padding-left:1.3em;margin:0 0 16px}
+  li{margin-bottom:6px}
+  .note{font-size:14px;color:#5b6663;background:#fff;border-radius:12px;padding:12px 14px}
+  a{color:#1d5f8a}
+</style>
+</head>
+<body>
+<img src="../icon180.png" alt="">
+<h1>採寸平面図メーカーをホーム画面に置く</h1>
+<ol>
+  <li>下の共有ボタン（四角から矢印が出ているマーク）を押す</li>
+  <li>「ホーム画面に追加」を押す</li>
+  <li>「Webアプリとして開く」というスイッチが出たら<b>オフ</b>にする</li>
+  <li>「追加」を押す</li>
+</ol>
+<p class="note">このアイコンから開くと、いつもの図面メーカーがSafariで開きます。<br>今すぐ開くときは <a id="now" href="#">こちら</a>。</p>
+<script>document.getElementById("now").href = EXEC;</script>
+</body>
+</html>
