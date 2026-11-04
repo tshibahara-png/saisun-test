@@ -145,7 +145,6 @@ function doPost(e) {
 
     // 集計：日ごと・人ごとの採寸件数（今日の件数は一番上）
     try { writeSummary_(ss, rows, DATE, WHO, head.indexOf('作成端末')); } catch (err) {}
-    try { ensureSearch_(ss); } catch (err) {}
 
     // 図面そのもの
     const data = ss.getSheetByName(DATA) || ss.insertSheet(DATA);
