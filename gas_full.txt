@@ -186,7 +186,7 @@ function searchFormula_() {
     + 'z_id,z_c("ID"),z_nm,z_c("図面名"),z_pr,z_c("物件名"),z_ad,z_c("住所（入力）"),z_tb,z_c("坪"),z_rent,z_c("賃料（月額・円）"),z_up,z_c("坪単価（円/坪）"),z_dt,z_c("採寸日"),'
     + 'z_q,TRIM($B$3),z_keep,(z_id<>"")*IF(z_q="",1,ISNUMBER(SEARCH(z_q,z_ad&" "&z_pr&" "&z_nm))),'
     + 'z_lk,IF(z_id="","",HYPERLINK("' + url + '?open="&z_id,"図面を見る")),'
-    + 'z_M,FILTER({z_up,z_ad,z_pr,z_nm,z_tb,z_rent,z_dt,z_lk},z_keep),'
+    + 'z_M,FILTER(HSTACK(z_up,z_ad,z_pr,z_nm,z_tb,z_rent,z_dt,z_lk),z_keep),'
     + 'z_k,IF($B$2="新しい順",7,1),z_o,$B$2="坪単価が安い順",'
     + 'IFERROR(SORT(z_M,z_k,z_o),"該当する図面はありません")))';
 }
