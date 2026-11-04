@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>採寸テスト</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="採寸テスト">
+<meta name="theme-color" content="#1f3a34">
+<style>
+  :root{--ink:#1f2a28;--sub:#5b6663;--bg:#f6f3ec;--ok:#1d7a4a;--ng:#b3261e;--card:#fff}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Hiragino Sans",sans-serif;padding:max(16px,env(safe-area-inset-top)) 16px 32px}
+  h1{font-size:20px;margin:8px 0 4px}
+  p.lead{color:var(--sub);font-size:14px;margin:0 0 16px}
+  .card{background:var(--card);border-radius:12px;padding:14px 16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .row{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:15px;border-bottom:1px solid #eee}
+  .row:last-child{border-bottom:0}
+  .v{font-weight:700;text-align:right}
+  .ok{color:var(--ok)}.ng{color:var(--ng)}.wait{color:var(--sub)}
+  #big{font-size:18px;font-weight:700;line-height:1.5}
+  details{font-size:13px;color:var(--sub)}
+  iframe{width:100%;height:220px;border:1px solid #ddd;border-radius:8px;background:#fff}
+  button{font-size:16px;padding:10px 14px;border-radius:10px;border:1px solid #ccc;background:#fff;width:100%}
+</style>
+</head>
+<body>
+<h1>採寸平面図メーカー 接続テスト</h1>
+<p class="lead">ホーム画面のアイコンから開いて、この画面をスクリーンショットで送ってください。</p>
+
+<div class="card"><div id="big" class="wait">確認中…</div></div>
+
+<div class="card">
+  <div class="row"><span>開き方</span><span class="v" id="mode">…</span></div>
+  <div class="row"><span>電波</span><span class="v" id="net">…</span></div>
+  <div class="row"><span>圏外での起動の準備</span><span class="v" id="sw">…</span></div>
+  <div class="row"><span>Googleのログインでスプシに接続</span><span class="v" id="gs">…</span></div>
+  <div class="row"><span>ログイン中の人</span><span class="v" id="who">…</span></div>
+</div>
+
+<div class="card">
+  <button id="again">もう一度テストする</button>
+</div>
+
+<details><summary>Googleの画面（うまくいかないときの確認用）</summary><div id="fw"></div></details>
+
+<script>
+const EXEC = "https://script.google.com/a/macros/uk-corp.co.jp/s/AKfycby0Zyzh7BG8gQ0LBOpXHbVtY-Te-DCNlTMcgsJCdF2rAHxH3V6jgQ9_vbq5TN5wphY/exec";
+const $ = id => document.getElementById(id);
+const set = (id, text, cls) => { const e = $(id); e.textContent = text; e.className = "v " + (cls || ""); };
+
+const standalone = window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+set("mode", standalone ? "ホーム画面のアイコン" : "Safari（アイコンからではない）", standalone ? "ok" : "ng");
+const showNet = () => set("net", navigator.onLine ? "あり" : "なし（圏外・機内モード）", navigator.onLine ? "ok" : "wait");
+showNet(); addEventListener("online", showNet); addEventListener("offline", showNet);
+
+let swOk = false;
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").then(() => navigator.serviceWorker.ready).then(() => { swOk = true; set("sw", "できた", "ok"); summary(); })
+    .catch(e => { set("sw", "できない：" + e.message, "ng"); summary(); });
+} else { set("sw", "このブラウザは非対応", "ng"); }
+
+let gsState = "wait", timer = null;
+function summary() {
+  const b = $("big");
+  if (!navigator.onLine) { b.className = swOk ? "ok" : "ng"; b.textContent = swOk ? "圏外でも起動できました。" : "圏外では起動できませんでした。"; return; }
+  if (gsState === "ok") { b.className = "ok"; b.textContent = "成功：Googleのログインのままスプシにつながりました。次は機内モードにして、アイコンから開き直してください。"; }
+  else if (gsState === "ng") { b.className = "ng"; b.textContent = "Googleのログインのままでは、スプシにつながりませんでした。"; }
+  else { b.className = "wait"; b.textContent = "確認中…（最大20秒）"; }
+}
+function probe() {
+  gsState = "wait"; set("gs", "確認中…", "wait"); set("who", "…", "wait"); summary();
+  if (!navigator.onLine) { set("gs", "圏外なので確認しません", "wait"); summary(); return; }
+  const f = document.createElement("iframe"); f.src = EXEC + "?probe=" + Date.now();
+  $("fw").innerHTML = ""; $("fw").appendChild(f);
+  clearTimeout(timer);
+  timer = setTimeout(() => { if (gsState === "wait") { gsState = "ng"; set("gs", "つながらない（20秒応答なし）", "ng"); summary(); } }, 20000);
+}
+addEventListener("message", ev => {
+  const d = ev.data; if (!d || !d.saisunProbe) return;
+  if (d.stage === "loaded") { set("gs", "Googleの画面は開いた…", "wait"); }
+  else if (d.stage === "ok") { gsState = "ok"; clearTimeout(timer); set("gs", "つながった（図面 " + d.r.n + "件）", "ok"); set("who", d.r.who || "（取得できず）", d.r.who ? "ok" : "wait"); summary(); }
+  else if (d.stage === "fail") { gsState = "ng"; clearTimeout(timer); set("gs", "つながらない：" + d.err, "ng"); summary(); }
+});
+$("again").onclick = () => location.reload();
+probe();
+</script>
+</body>
+</html>
