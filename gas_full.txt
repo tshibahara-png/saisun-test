@@ -113,8 +113,8 @@ function doPost(e) {
     const NUMS = ['面積㎡（柱除く）', '坪', '賃料（月額・円）', '精度m'].map(h => head.indexOf(h)).filter(i => i >= 0);
     rows.forEach(r => NUMS.forEach(i => { const v = String(r[i]).replace(/,/g, ''); if (v !== '' && !isNaN(v)) r[i] = Number(v); }));
     rows.sort((a, b) => String(b[DATE]).localeCompare(String(a[DATE])));
-    // エリア・都道府県：入力した住所から自動で決める（近畿・中国…、台湾は市）。住所がなければ測った場所（GPS）から。どちらもなければ表の値をそのまま残す（手で入れてもOK）
-    { const AR = head.indexOf('エリア'), PF = head.indexOf('都道府県'), AD = head.indexOf('住所（入力）'), GP = head.indexOf('測った場所（GPS）'); rows.forEach(r => { const p = (AD >= 0 && prefOf_(r[AD])) || (GP >= 0 && prefOf_(r[GP])) || ''; if (!p) return; if (PF >= 0) r[PF] = p; if (AR >= 0) r[AR] = areaOf_(p); }); }
+    // エリア・都道府県：①入力した住所 ②表に手で入れた都道府県 ③測った場所（GPS）の順で決める（近畿・中国…、台湾は市）
+    { const AR = head.indexOf('エリア'), PF = head.indexOf('都道府県'), AD = head.indexOf('住所（入力）'), GP = head.indexOf('測った場所（GPS）'); rows.forEach(r => { const cur = PF >= 0 ? String(r[PF] || '').trim() : ''; const p = (AD >= 0 && prefOf_(r[AD])) || cur || (GP >= 0 && prefOf_(r[GP])) || ''; if (!p) return; if (PF >= 0) r[PF] = p; if (AR >= 0) r[AR] = areaOf_(p) || r[AR]; }); }
     // 測った人：メールアドレスを登録した名前に置きかえる
     try { const nm = names_(ss); rows.forEach(r => { const k = String(r[WHO] || '').trim().toLowerCase(); if (nm[k]) r[WHO] = nm[k]; }); } catch (err) {}
     // 「図面を見る」：押すと図面メーカーでその図面が開く
@@ -391,8 +391,8 @@ function onEdit(e) {
     // 住所（またはGPS）を書きかえたら、その行の都道府県・エリアをすぐ入れ直す
     { const h0 = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String), AD = h0.indexOf('住所（入力）'), GP = h0.indexOf('測った場所（GPS）'), PF = h0.indexOf('都道府県'), AR = h0.indexOf('エリア');
       const c0 = e.range.getColumn(), c1 = e.range.getLastColumn(), hit = k => k >= 0 && k + 1 >= c0 && k + 1 <= c1;
-      if ((PF >= 0 || AR >= 0) && (hit(AD) || hit(GP))) { const r0 = Math.max(2, e.range.getRow()), n = e.range.getLastRow() - r0 + 1;
-        if (n > 0) sh.getRange(r0, 1, n, h0.length).getValues().forEach((r, i) => { const p = (AD >= 0 && prefOf_(r[AD])) || (GP >= 0 && prefOf_(r[GP])) || ''; if (!p) return; if (PF >= 0) sh.getRange(r0 + i, PF + 1).setValue(p); if (AR >= 0) sh.getRange(r0 + i, AR + 1).setValue(areaOf_(p)); }); } }
+      if ((PF >= 0 || AR >= 0) && (hit(AD) || hit(GP) || hit(PF))) { const r0 = Math.max(2, e.range.getRow()), n = e.range.getLastRow() - r0 + 1;
+        if (n > 0) sh.getRange(r0, 1, n, h0.length).getValues().forEach((r, i) => { const cur = PF >= 0 ? String(r[PF] || '').trim() : ''; const p = (AD >= 0 && prefOf_(r[AD])) || cur || (GP >= 0 && prefOf_(r[GP])) || ''; if (!p) return; if (PF >= 0 && p !== cur) sh.getRange(r0 + i, PF + 1).setValue(p); if (AR >= 0) sh.getRange(r0 + i, AR + 1).setValue(areaOf_(p) || r[AR]); }); } }
     const ss = sh.getParent(), data = ss.getSheetByName(DATA); if (!data || data.getLastRow() < 2) return;
     const hdr = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String), idc = hdr.indexOf('ID'); if (idc < 0) return;
     const r0 = Math.max(2, e.range.getRow()), n = e.range.getLastRow() - r0 + 1;
