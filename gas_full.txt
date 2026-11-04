@@ -176,50 +176,35 @@ function doPost(e) {
   return ContentService.createTextOutput('ok');
 }
 
-// 「物件さがし」シート：図面一覧を、賃料・坪単価・面積の順に並べたり、エリアで絞ったりして見るためのシート
+// 「並び替え」シート：図面一覧を坪単価の順に並べたり、住所で絞ったりして見るためのシート
 // （図面一覧は同期のたびに書き直されるので、並び替えはこのシートでする。ここで何を変えても図面には影響しない）
-const SEARCH = '物件さがし';
-function makeSearchSheet() { const ss = SpreadsheetApp.getActiveSpreadsheet(); const sh = ss.getSheetByName(SEARCH); if (sh) sh.getRange('A11').setFormula(searchFormula_()); else ensureSearch_(ss); }
+const SEARCH = '並び替え';
+function makeSearchSheet() { const ss = SpreadsheetApp.getActiveSpreadsheet(); const sh = ss.getSheetByName(SEARCH); if (sh) sh.getRange('A6').setFormula(searchFormula_()); else ensureSearch_(ss); }
 function searchFormula_() {
   const url = ScriptApp.getService().getUrl();
   return '=ARRAYFORMULA(LET(z_h,\'図面一覧\'!A1:AZ1,z_d,\'図面一覧\'!A2:AZ,z_c,LAMBDA(n,INDEX(z_d,0,XMATCH(n,z_h))),'
-    + 'z_id,z_c("ID"),z_nm,z_c("図面名"),z_pr,z_c("物件名"),z_ad,z_c("住所（入力）"),z_fl,z_c("階"),z_tb,z_c("坪"),z_rent,z_c("賃料（月額・円）"),z_up,z_c("坪単価（円/坪）"),z_dt,z_c("採寸日"),z_who,z_c("測った人"),'
-    + 'z_lim,MAP(z_ad,LAMBDA(a,IFERROR(INDEX(FILTER($E$4:$E$8,($D$4:$D$8<>"")*ISNUMBER(SEARCH($D$4:$D$8,a))),1),$E$9))),'
-    + 'z_pct,N($B$7)/100,z_tl,N($B$6),'
-    + 'z_okU,(z_up<>"")*(z_up<=z_lim),z_okT,((z_tl=0)+(z_tb<=z_tl))>0,z_nearU,(z_up<>"")*(z_up<=z_lim*(1+z_pct)),z_nearT,((z_tl=0)+(z_tb<=z_tl*(1+z_pct)))>0,'
-    + 'z_j,IF(z_up="","賃料なし",IF(z_okU*z_okT,"○ 基準内",IF(z_nearU*z_nearT,"△ 惜しい","× 基準外"))),'
-    + 'z_q,TRIM($B$4),z_keep,(z_id<>"")*IF(z_q="",1,ISNUMBER(SEARCH(z_q,z_nm&" "&z_pr&" "&z_ad))),'
-    + 'z_fil,$B$8,z_keep2,z_keep*IF(z_fil="○と△だけ",((LEFT(z_j,1)="○")+(LEFT(z_j,1)="△"))>0,IF(z_fil="△だけ",LEFT(z_j,1)="△",1)),'
+    + 'z_id,z_c("ID"),z_nm,z_c("図面名"),z_pr,z_c("物件名"),z_ad,z_c("住所（入力）"),z_tb,z_c("坪"),z_rent,z_c("賃料（月額・円）"),z_up,z_c("坪単価（円/坪）"),z_dt,z_c("採寸日"),'
+    + 'z_q,TRIM($B$3),z_keep,(z_id<>"")*IF(z_q="",1,ISNUMBER(SEARCH(z_q,z_ad&" "&z_pr&" "&z_nm))),'
     + 'z_lk,IF(z_id="","",HYPERLINK("' + url + '?open="&z_id,"図面を見る")),'
-    + 'z_M,FILTER(HSTACK(z_j,z_nm,z_pr,z_ad,z_fl,z_tb,z_rent,z_up,z_lim,z_dt,z_who,z_lk),z_keep2),'
-    + 'z_s,$B$3,z_k,SWITCH(z_s,"賃料が安い順",7,"面積が広い順",6,"面積が狭い順",6,"新しい順",10,8),z_o,SWITCH(z_s,"面積が広い順",FALSE,"新しい順",FALSE,TRUE),'
+    + 'z_M,FILTER({z_up,z_ad,z_pr,z_nm,z_tb,z_rent,z_dt,z_lk},z_keep),'
+    + 'z_k,IF($B$2="新しい順",7,1),z_o,$B$2="坪単価が安い順",'
     + 'IFERROR(SORT(z_M,z_k,z_o),"該当する図面はありません")))';
 }
 function ensureSearch_(ss) {
   if (ss.getSheetByName(SEARCH)) return;
   const sh = ss.insertSheet(SEARCH);
-  const url = ScriptApp.getService().getUrl();
-  sh.getRange('A1').setValue('物件さがし（図面一覧から自動で並びます。黄色の欄を変えると、並び順・絞り込み・判定が変わります）').setFontWeight('bold').setFontSize(13);
-  sh.getRange('A3:B8').setValues([['並び順', '坪単価が安い順'], ['住所・物件名・図面名に含む文字', ''], ['', ''], ['出店基準：坪数の上限（空欄なら見ない）', 100], ['「惜しい」とする範囲（基準を超えた割合 ％まで）', 15], ['判定で絞る', 'すべて']]);
-  sh.getRange('A5').setValue('（例：新北、中山、淡水）').setFontColor('#888888');
-  sh.getRange('D3:E9').setValues([['エリア（住所に含む文字）', '坪単価の上限'], ['台北', 1200], ['新北', 800], ['', ''], ['', ''], ['', ''], ['上の行に当てはまらないとき', 3000]]);
-  sh.getRange('A3:A8').setFontWeight('bold'); sh.getRange('D3:E3').setFontWeight('bold');
-  sh.getRange('B3').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['坪単価が安い順', '賃料が安い順', '面積が広い順', '面積が狭い順', '新しい順'], true).build());
-  sh.getRange('B8').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['すべて', '○と△だけ', '△だけ'], true).build());
-  for (const r of ['B3', 'B4', 'B6', 'B7', 'B8', 'D4:E8', 'E9']) sh.getRange(r).setBackground('#fff7d6');
-  const head = ['判定', '図面名', '物件名', '住所', '階', '坪', '賃料（月額）', '坪単価', '基準の坪単価', '採寸日', '測った人', '図面'];
-  sh.getRange(10, 1, 1, head.length).setValues([head]).setFontWeight('bold').setBackground('#e8eef7');
-  const F = searchFormula_();
-  sh.getRange('A11').setFormula(F);
-
-  sh.getRange('F11:F').setNumberFormat('0.00'); sh.getRange('G11:I').setNumberFormat('#,##0');
-  const R = sh.getRange('A11:L');
-  sh.setConditionalFormatRules([
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=LEFT($A11,1)="△"').setBackground('#fff1c2').setRanges([R]).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=LEFT($A11,1)="○"').setBackground('#e3f0dc').setRanges([R]).build()]);
-  sh.setFrozenRows(10);
-  const W = [90, 170, 150, 220, 50, 70, 100, 90, 100, 100, 110, 90]; W.forEach((w, i) => sh.setColumnWidth(i + 1, w));
-  sh.setColumnWidth(1, 260); sh.setColumnWidth(4, 220);
+  sh.getRange('A1').setValue('並び替え（図面一覧から自動で並びます）').setFontWeight('bold').setFontSize(13);
+  sh.getRange('A2:B3').setValues([['並び順', '坪単価が安い順'], ['住所で絞る', '']]);
+  sh.getRange('C3').setValue('例：新北、中山（空欄なら全部）').setFontColor('#888888');
+  sh.getRange('A2:A3').setFontWeight('bold');
+  sh.getRange('B2').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['坪単価が安い順', '坪単価が高い順', '新しい順'], true).build());
+  sh.getRange('B2:B3').setBackground('#fff7d6');
+  const head = ['坪単価', '住所', '物件名', '図面名', '坪', '賃料（月額）', '採寸日', '図面'];
+  sh.getRange(5, 1, 1, head.length).setValues([head]).setFontWeight('bold').setBackground('#e8eef7');
+  sh.getRange('A6').setFormula(searchFormula_());
+  sh.getRange('A6:A').setNumberFormat('#,##0'); sh.getRange('E6:E').setNumberFormat('0.00'); sh.getRange('F6:F').setNumberFormat('#,##0');
+  sh.setFrozenRows(5);
+  [110, 240, 160, 160, 70, 110, 100, 90].forEach((w, k) => sh.setColumnWidth(k + 1, w));
 }
 
 function writeSummary_(ss, rows, DATE, WHO, DEV) {
