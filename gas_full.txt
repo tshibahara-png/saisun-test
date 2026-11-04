@@ -142,7 +142,7 @@ function doPost(e) {
       list.setColumnWidths(1, head.length, 100);
       const W = { '測った人': 190, '図面を見る': 90, 'エリア': 90, '都道府県': 90, '図面名': 170, '物件名': 150, '住所（入力）': 200, '測った場所（GPS）': 220, '地図': 90, '注記': 260, '保存元': 120 };
       head.forEach((h, i) => { if (W[h]) list.setColumnWidth(i + 1, W[h]); });
-      list.hideColumns(IDC + 1);
+      list.showColumns(1, list.getMaxColumns()); list.hideColumns(IDC + 1); // 列が増えても、隠すのはIDの列だけ
       list.setFrozenColumns(1);
     } catch (err) {}
 
