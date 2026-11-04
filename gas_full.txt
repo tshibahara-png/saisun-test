@@ -59,7 +59,7 @@ function doPost(e) {
     const old = list.getDataRange().getValues();
     const oh = old.length ? old[0].map(String) : [];
     // 表に自分で足した列も残す（「ID」の手前に並べる）
-    const head = body.head.concat(['測った人', '図面を見る']);
+    const head = body.head.concat(['測った人', '図面を見る', 'エリア', '都道府県']);
     oh.forEach(h => { if (h && h !== 'ID' && head.indexOf(h) < 0) head.push(h); });
     head.push('ID');
     const WHO = head.indexOf('測った人'), LINK = head.indexOf('図面を見る');
@@ -113,6 +113,8 @@ function doPost(e) {
     const NUMS = ['面積㎡（柱除く）', '坪', '賃料（月額・円）', '精度m'].map(h => head.indexOf(h)).filter(i => i >= 0);
     rows.forEach(r => NUMS.forEach(i => { const v = String(r[i]).replace(/,/g, ''); if (v !== '' && !isNaN(v)) r[i] = Number(v); }));
     rows.sort((a, b) => String(b[DATE]).localeCompare(String(a[DATE])));
+    // エリア・都道府県：入力した住所から自動で決める（近畿・中国…、台湾は市）。住所がなければ測った場所（GPS）から。どちらもなければ表の値をそのまま残す（手で入れてもOK）
+    { const AR = head.indexOf('エリア'), PF = head.indexOf('都道府県'), AD = head.indexOf('住所（入力）'), GP = head.indexOf('測った場所（GPS）'); rows.forEach(r => { const p = (AD >= 0 && prefOf_(r[AD])) || (GP >= 0 && prefOf_(r[GP])) || ''; if (!p) return; if (PF >= 0) r[PF] = p; if (AR >= 0) r[AR] = areaOf_(p); }); }
     // 測った人：メールアドレスを登録した名前に置きかえる
     try { const nm = names_(ss); rows.forEach(r => { const k = String(r[WHO] || '').trim().toLowerCase(); if (nm[k]) r[WHO] = nm[k]; }); } catch (err) {}
     // 「図面を見る」：押すと図面メーカーでその図面が開く
@@ -137,7 +139,7 @@ function doPost(e) {
       list.getRange(1, 1, Math.max(rows.length + 1, 2), head.length).setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP).setVerticalAlignment('middle');
       list.getRange(1, 1, 1, head.length).setBackground('#e8eef7');
       list.setColumnWidths(1, head.length, 100);
-      const W = { '測った人': 190, '図面を見る': 90, '図面名': 170, '物件名': 150, '住所（入力）': 200, '測った場所（GPS）': 220, '地図': 90, '注記': 260, '保存元': 120 };
+      const W = { '測った人': 190, '図面を見る': 90, 'エリア': 90, '都道府県': 90, '図面名': 170, '物件名': 150, '住所（入力）': 200, '測った場所（GPS）': 220, '地図': 90, '注記': 260, '保存元': 120 };
       head.forEach((h, i) => { if (W[h]) list.setColumnWidth(i + 1, W[h]); });
       list.hideColumns(IDC + 1);
       list.setFrozenColumns(1);
@@ -179,34 +181,59 @@ function doPost(e) {
 // 「並び替え」シート：図面一覧を坪単価の順に並べたり、住所で絞ったりして見るためのシート
 // （図面一覧は同期のたびに書き直されるので、並び替えはこのシートでする。ここで何を変えても図面には影響しない）
 const SEARCH = '並び替え';
-function makeSearchSheet() { const ss = SpreadsheetApp.getActiveSpreadsheet(); const sh = ss.getSheetByName(SEARCH); if (sh) sh.getRange('A6').setFormula(searchFormula_()); else ensureSearch_(ss); }
+function makeSearchSheet() { const ss = SpreadsheetApp.getActiveSpreadsheet(); const sh = ss.getSheetByName(SEARCH); if (sh) ss.deleteSheet(sh); ensureSearch_(ss); }
 function searchFormula_() {
   const url = ScriptApp.getService().getUrl();
   return '=ARRAYFORMULA(LET(z_h,\'図面一覧\'!A1:AZ1,z_d,\'図面一覧\'!A2:AZ,z_c,LAMBDA(n,INDEX(z_d,0,XMATCH(n,z_h))),'
-    + 'z_id,z_c("ID"),z_nm,z_c("図面名"),z_pr,z_c("物件名"),z_ad,z_c("住所（入力）"),z_tb,z_c("坪"),z_rent,z_c("賃料（月額・円）"),z_up,z_c("坪単価（円/坪）"),z_dt,z_c("採寸日"),'
-    + 'z_q,TRIM($B$3),z_keep,(z_id<>"")*IF(z_q="",1,ISNUMBER(SEARCH(z_q,z_ad&" "&z_pr&" "&z_nm))),'
+    + 'z_id,z_c("ID"),z_nm,z_c("図面名"),z_pr,z_c("物件名"),z_ad,z_c("住所（入力）"),z_tb,z_c("坪"),z_rent,z_c("賃料（月額・円）"),z_up,z_c("坪単価（円/坪）"),z_dt,z_c("採寸日"),z_ar,z_c("エリア"),z_pf,z_c("都道府県"),'
+    + 'z_e,$B$3,z_keep,(z_id<>"")*IF(OR(z_e="",z_e="すべて"),1,z_pf=z_e),'
     + 'z_lk,IF(z_id="","",HYPERLINK("' + url + '?open="&z_id,"図面を見る")),'
-    + 'z_M,FILTER(HSTACK(z_up,z_ad,z_pr,z_nm,z_tb,z_rent,z_dt,z_lk),z_keep),'
-    + 'z_k,IF($B$2="新しい順",7,1),z_o,$B$2="坪単価が安い順",'
+    + 'z_M,FILTER(HSTACK(z_up,z_pf,z_ar,z_ad,z_pr,z_nm,z_tb,z_rent,z_dt,z_lk),z_keep),'
+    + 'z_k,IF($B$2="新しい順",9,1),z_o,$B$2="坪単価が安い順",'
     + 'IFERROR(SORT(z_M,z_k,z_o),"該当する図面はありません")))';
 }
 function ensureSearch_(ss) {
   if (ss.getSheetByName(SEARCH)) return;
   const sh = ss.insertSheet(SEARCH);
   sh.getRange('A1').setValue('並び替え（図面一覧から自動で並びます）').setFontWeight('bold').setFontSize(13);
-  sh.getRange('A2:B3').setValues([['並び順', '坪単価が安い順'], ['住所で絞る', '']]);
-  sh.getRange('C3').setValue('例：新北、中山（空欄なら全部）').setFontColor('#888888');
+  sh.getRange('A2:B3').setValues([['並び順', '坪単価が安い順'], ['都道府県で絞る', 'すべて']]);
   sh.getRange('A2:A3').setFontWeight('bold');
+  // 都道府県の選択肢：図面に出てくる都道府県だけ（Z列に自動で並べて隠しておく）
+  sh.getRange('Z1').setValue('すべて'); sh.getRange('Z2').setFormula('=IFERROR(SORT(UNIQUE(FILTER(INDEX(\'図面一覧\'!A2:AZ,0,XMATCH("都道府県",\'図面一覧\'!A1:AZ1)),INDEX(\'図面一覧\'!A2:AZ,0,XMATCH("都道府県",\'図面一覧\'!A1:AZ1))<>""))),"")');
+  sh.getRange('B3').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInRange(sh.getRange('Z1:Z80'), true).build()); sh.hideColumns(26);
   sh.getRange('B2').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['坪単価が安い順', '坪単価が高い順', '新しい順'], true).build());
   sh.getRange('B2:B3').setBackground('#fff7d6');
-  const head = ['坪単価', '住所', '物件名', '図面名', '坪', '賃料（月額）', '採寸日', '図面'];
+  const head = ['坪単価', '都道府県', 'エリア', '住所', '物件名', '図面名', '坪', '賃料（月額）', '採寸日', '図面'];
   sh.getRange(5, 1, 1, head.length).setValues([head]).setFontWeight('bold').setBackground('#e8eef7');
   sh.getRange('A6').setFormula(searchFormula_());
-  sh.getRange('A6:A').setNumberFormat('#,##0'); sh.getRange('E6:E').setNumberFormat('0.00'); sh.getRange('F6:F').setNumberFormat('#,##0'); sh.getRange('G6:G').setNumberFormat('yyyy-mm-dd');
+  sh.getRange('A6:A').setNumberFormat('#,##0'); sh.getRange('G6:G').setNumberFormat('0.00'); sh.getRange('H6:H').setNumberFormat('#,##0'); sh.getRange('I6:I').setNumberFormat('yyyy-mm-dd');
   sh.setFrozenRows(5);
-  [110, 240, 160, 160, 70, 110, 100, 90].forEach((w, k) => sh.setColumnWidth(k + 1, w));
+  [110, 90, 90, 240, 160, 160, 70, 110, 100, 90].forEach((w, k) => sh.setColumnWidth(k + 1, w));
 }
 
+// 住所 → エリア（日本は地方、台湾は市）。見つからなければ空
+const AREA_JP = [['北海道', ['北海道']], ['東北', ['青森', '岩手', '宮城', '秋田', '山形', '福島']], ['関東', ['茨城', '栃木', '群馬', '埼玉', '千葉', '東京', '神奈川']],
+  ['中部', ['新潟', '富山', '石川', '福井', '山梨', '長野', '岐阜', '静岡', '愛知']], ['近畿', ['三重', '滋賀', '京都', '大阪', '兵庫', '奈良', '和歌山']],
+  ['中国', ['鳥取', '島根', '岡山', '広島', '山口']], ['四国', ['徳島', '香川', '愛媛', '高知']], ['九州・沖縄', ['福岡', '佐賀', '長崎', '熊本', '大分', '宮崎', '鹿児島', '沖縄']]];
+const AREA_TW = [['台北市', ['台北', '臺北']], ['新北市', ['新北']], ['桃園市', ['桃園']], ['台中市', ['台中', '臺中']], ['台南市', ['台南', '臺南']], ['高雄市', ['高雄']], ['基隆市', ['基隆']], ['新竹', ['新竹']]];
+// 住所 → 都道府県（「大阪府」「広島県」など。台湾は「新北市」など）
+function prefOf_(addr) {
+  const t = String(addr || '').replace(/\s/g, ''); if (!t) return '';
+  for (const [a, ks] of AREA_TW) if (ks.some(k => t.indexOf(k) >= 0)) return a;
+  if (t.indexOf('東京') >= 0) return '東京都';
+  if (t.indexOf('北海道') >= 0) return '北海道';
+  const t2 = t.replace(/東京/g, '★');
+  for (const [, ks] of AREA_JP) for (const k of ks) if (t2.indexOf(k) >= 0) return k === '京都' || k === '大阪' ? k + '府' : k + '県';
+  return '';
+}
+function areaOf_(addr) {
+  const t = String(addr || '').replace(/\s/g, ''); if (!t) return '';
+  for (const [a, ks] of AREA_TW) if (ks.some(k => t.indexOf(k) >= 0)) return a;
+  const t2 = t.replace(/東京/g, '★'); // 「東京都」の中の「京都」に反応しないように
+  if (t.indexOf('東京') >= 0) return '関東';
+  for (const [a, ks] of AREA_JP) if (ks.some(k => t2.indexOf(k) >= 0)) return a;
+  return '';
+}
 function writeSummary_(ss, rows, DATE, WHO, DEV) {
   const sh = ss.getSheetByName(SUM) || ss.insertSheet(SUM);
   const tz = Session.getScriptTimeZone(), today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
