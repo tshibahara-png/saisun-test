@@ -201,9 +201,9 @@ function ensureSearch_(ss) {
   sh.getRange('A2:B3').setValues([['並び順', '坪単価が安い順'], ['都道府県で絞る', 'すべて']]);
   sh.getRange('C3:D3').setValues([['市・区で絞る', 'すべて']]);
   sh.getRange('A2:A3').setFontWeight('bold'); sh.getRange('C3').setFontWeight('bold');
-  // 都道府県の選択肢：全国の都道府県と台湾の市（Z列に並べて隠しておく）
-  const prefs = ['すべて'].concat(PREFS_ALL_()); sh.getRange(1, 26, prefs.length, 1).setValues(prefs.map(p => [p]));
-  sh.getRange('B3').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInRange(sh.getRange(1, 26, prefs.length, 1), true).build());
+  // 都道府県の選択肢：図面に出てくる都道府県だけ（Z列に自動で並べて隠しておく）
+  sh.getRange('Z1').setValue('すべて'); sh.getRange('Z2').setFormula('=IFERROR(SORT(UNIQUE(FILTER(INDEX(\'図面一覧\'!A2:AZ,0,XMATCH("都道府県",\'図面一覧\'!A1:AZ1)),INDEX(\'図面一覧\'!A2:AZ,0,XMATCH("都道府県",\'図面一覧\'!A1:AZ1))<>""))),"")');
+  sh.getRange('B3').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInRange(sh.getRange('Z1:Z80'), true).build());
   // 市・区の選択肢：選んだ都道府県の図面に出てくる市区町村（政令市は「大阪市」と「大阪市北区」の両方）（Y列に自動で並べて隠しておく）
   sh.getRange('Y1').setValue('すべて');
   sh.getRange('Y2').setFormula('=IFERROR(ARRAYFORMULA(LET(z_h,\'図面一覧\'!A1:AZ1,z_d,\'図面一覧\'!A2:AZ,z_ct,INDEX(z_d,0,XMATCH("市区町村",z_h)),z_pf,INDEX(z_d,0,XMATCH("都道府県",z_h)),'
