@@ -115,7 +115,7 @@ function doPost(e) {
     rows.sort((a, b) => String(b[DATE]).localeCompare(String(a[DATE])));
     // エリア・都道府県：①入力した住所 ②表に手で入れた都道府県 ③測った場所（GPS）の順で決める（近畿・中国…、台湾は市）
     { const AR = head.indexOf('エリア'), PF = head.indexOf('都道府県'), AD = head.indexOf('住所（入力）'), GP = head.indexOf('測った場所（GPS）'); rows.forEach(r => { const cur = PF >= 0 ? String(r[PF] || '').trim() : ''; const p = (AD >= 0 && prefOf_(r[AD])) || cur || (GP >= 0 && prefOf_(r[GP])) || ''; if (!p) return; if (PF >= 0) r[PF] = p; if (AR >= 0) r[AR] = areaOf_(p) || r[AR]; }); }
-    { const CT = head.indexOf('市区町村'), AD = head.indexOf('住所（入力）'); if (CT >= 0 && AD >= 0) rows.forEach(r => { const c = cityOf_(r[AD]); if (c) r[CT] = c; }); }
+    { const CT = head.indexOf('市区町村'), AD = head.indexOf('住所（入力）'), GP = head.indexOf('測った場所（GPS）'); if (CT >= 0) rows.forEach(r => { const c = (AD >= 0 && cityOf_(r[AD])) || (AD >= 0 && String(r[AD] || '').trim() ? '' : (GP >= 0 && cityOf_(r[GP]))) || ''; if (c) r[CT] = c; }); }
     // 測った人：メールアドレスを登録した名前に置きかえる
     try { const nm = names_(ss); rows.forEach(r => { const k = String(r[WHO] || '').trim().toLowerCase(); if (nm[k]) r[WHO] = nm[k]; }); } catch (err) {}
     // 「図面を見る」：押すと図面メーカーでその図面が開く
